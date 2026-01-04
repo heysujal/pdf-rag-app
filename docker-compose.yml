@@ -1,0 +1,17 @@
+services:
+  redis-cache:
+    image: redis:8-alpine
+    ports:
+      - 6379:6379
+    restart: always
+    volumes:
+      - redis-data:/data
+  qdrant:
+    image: qdrant/qdrant
+    ports:
+      - 6333:6333
+
+volumes:
+  redis-data:
+    driver: local
+
