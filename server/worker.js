@@ -3,14 +3,15 @@ import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import dotenv from 'dotenv'
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
-import {QdrantClient} from '@qdrant/js-client-rest';
 import { QdrantVectorStore } from "@langchain/qdrant";
-import * as z from "zod";
 
 dotenv.config();
 
+const embeddings = new GoogleGenerativeAIEmbeddings({
+  model: "text-embedding-004",
+  apiKey: process.env.GEMINI_API_KEY
+});
 
- 
 const jobProcessor = async (job) => {
     // flow
     // get the pdf path
@@ -29,13 +30,6 @@ const jobProcessor = async (job) => {
     });
 
     const splitDocs = await splitter.splitDocuments(docs);
-
-    const embeddings = new GoogleGenerativeAIEmbeddings({
-      model: "text-embedding-004",
-      apiKey: process.env.GEMINI_API_KEY
-    });
-
-    const client = new QdrantClient({url: process.env.QDRANT_URL });
     const vectorStore = await QdrantVectorStore.fromExistingCollection(embeddings, {
       url: process.env.QDRANT_URL,
       collectionName: "career-timeline-collection",
@@ -44,38 +38,38 @@ const jobProcessor = async (job) => {
     await vectorStore.addDocuments(splitDocs)
     console.log(`All docs added to vector store`)
 
-    
-}
-
-async function queryPDF(){
-
-  const embeddings = new GoogleGenerativeAIEmbeddings({
-    model: "text-embedding-004",
-    apiKey: process.env.GEMINI_API_KEY
-  });
-  const vectorStore = await QdrantVectorStore.fromExistingCollection(embeddings, {
-    url: process.env.QDRANT_URL,
-    collectionName: "career-timeline-collection",
-  });
-  
-  const query = "What is phone number of Sujal Gupta?"
-  const retrievedDocs = await vectorStore.similaritySearch(query, 2);
-    const serialized = retrievedDocs
-      .map(
-        (doc) => `Source: ${doc.metadata.source}\nContent: ${doc.pageContent}`
-      )
-      .join("\n");
-  console.log("serialized", serialized);
 }
 
 const worker = new Worker(
   'file-upload-queue',
   jobProcessor,
   { 
-    concurrency: 100,
+    concurrency: 5,
     connection: {
-      host: 'localhost',
-      port: 6379,
+      host: process.env.REDIS_HOST || 'localhost',
+      port: Number(process.env.REDIS_PORT) || 6379,
     }
   },
 );  
+
+
+// For Debugging
+
+worker.on("failed", (job, err) => {
+  console.error(`Job ${job.id} failed`, err);
+});
+
+worker.on("completed", (job) => {
+  console.log(`Job ${job.id} completed`);
+});
+
+// Fix to stop it from exiting in docker
+process.on("SIGTERM", async () => {
+  console.log("Worker shutting down...");
+  await worker.close();
+  process.exit(0);
+});
+console.log("Worker started and listening for jobs...");
+
+
+

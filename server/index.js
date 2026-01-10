@@ -5,12 +5,17 @@ import { Queue } from 'bullmq';
 import { QdrantVectorStore } from "@langchain/qdrant";
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai"
+import fs from 'fs'
 
 import dotenv from 'dotenv'
 
+if (!fs.existsSync("uploads")) {
+  fs.mkdirSync("uploads");
+}
+
 dotenv.config();
 
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 const app = express();
 app.use(express.json());
 app.use(cors({
@@ -19,31 +24,32 @@ app.use(cors({
 // queue setup
 const q = new Queue('file-upload-queue', {
     connection: {
-      host: 'localhost',
-      port: 6379,
+      host: process.env.REDIS_HOST || 'localhost',
+      port:  Number(process.env.REDIS_PORT) || 6379,
     }
 });
 
-const queryQueue = new Queue('resolve-query-queue', {
-    connection: {
-        host: 'localhost',
-        port: 6379
-    }
-})
+let retriever;
 
-const embeddings = new GoogleGenerativeAIEmbeddings({
+async function initVectorStore() {
+  const embeddings = new GoogleGenerativeAIEmbeddings({
     model: "text-embedding-004",
     apiKey: process.env.GEMINI_API_KEY
-});
+  });
 
-const vectorStore = await QdrantVectorStore.fromExistingCollection(embeddings, {
-    url: process.env.QDRANT_URL,
-    collectionName: "career-timeline-collection",
-});
+  const vectorStore = await QdrantVectorStore.fromExistingCollection(
+    embeddings,
+    {
+      url: process.env.QDRANT_URL,
+      collectionName: "career-timeline-collection",
+    }
+  );
 
-const retriever = vectorStore.asRetriever({
-    k: 2
-});
+  retriever = vectorStore.asRetriever({ k: 2 });
+}
+
+await initVectorStore();
+
 // multer setup
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -73,10 +79,25 @@ app.get('/', (req, res) => {
 
 app.get('/ask', async (req, res) => {
     const query = req.query.query;
+    if (!query || typeof query !== "string") {
+      return res.status(400).json({ error: "Invalid query" });
+    }
     console.log(query)
     const r = await retriever.invoke(query);
-    const SYSTEM_PROMPT = `You are a helpful AI assitant which answers based on the context of a PDF available to your.
-    Context: ${JSON.stringify(r)}`
+    console.log(r);
+
+    const context = r.map(doc => doc.pageContent).join("\n---\n");
+    console.log(
+      "context", context
+    )
+
+    const SYSTEM_PROMPT = `
+    Answer ONLY using the context below.
+    If the answer is not present, say "Not found in document".
+
+    Context:
+    ${context}
+    `;
 
     const aiMsg = await llm.invoke([
         [ "system", SYSTEM_PROMPT ],
@@ -101,6 +122,11 @@ app.post('/upload/pdf', upload.single('pdfFile'),  async (req, res) => {
         name: req.file.originalname,
         dest: req.file.destination,
         path: req.file.path
+    }, {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 5000 },
+      removeOnComplete: true,
+      removeOnFail: false,
     });
     return res.status(202).json({
         success: true,
@@ -109,7 +135,7 @@ app.post('/upload/pdf', upload.single('pdfFile'),  async (req, res) => {
 })
 
 
-app.listen(PORT, (err) => {
+app.listen(PORT, "0.0.0.0", (err) => {
     if(err){
         console.log(err)
     }else{
