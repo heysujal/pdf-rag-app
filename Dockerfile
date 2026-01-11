@@ -10,6 +10,4 @@ COPY server .
 # Create uploads dir
 RUN mkdir -p uploads
 
-EXPOSE 3001
-
 CMD ["sh", "-c", "node index.js & node worker.js && wait"]
