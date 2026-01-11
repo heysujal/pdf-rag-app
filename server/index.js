@@ -50,7 +50,10 @@ async function initVectorStore() {
   retriever = vectorStore.asRetriever({ k: 2 });
 }
 
-await initVectorStore();
+initVectorStore().catch(err => {
+  console.error("Vector store init failed", err);
+});
+
 
 // multer setup
 const storage = multer.diskStorage({
