@@ -43,6 +43,7 @@ async function initVectorStore() {
     {
       url: process.env.QDRANT_URL,
       collectionName: "career-timeline-collection",
+      // apiKey: process.env.QDRANT_API_KEY
     }
   );
 

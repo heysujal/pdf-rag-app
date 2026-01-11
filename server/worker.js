@@ -33,6 +33,7 @@ const jobProcessor = async (job) => {
     const vectorStore = await QdrantVectorStore.fromExistingCollection(embeddings, {
       url: process.env.QDRANT_URL,
       collectionName: "career-timeline-collection",
+      // apiKey: process.env.QDRANT_API_KEY
     });
 
     await vectorStore.addDocuments(splitDocs)
