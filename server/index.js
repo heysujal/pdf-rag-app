@@ -50,7 +50,7 @@ async function getRetriever() {
         }
       );
 
-      retriever = vectorStore.asRetriever({ k: 2 });
+      retriever = vectorStore.asRetriever({ k: 5 });
       console.log("✅ Qdrant retriever initialized");
       return retriever;
     } catch (err) {
