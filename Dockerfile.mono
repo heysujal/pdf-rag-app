@@ -1,0 +1,29 @@
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY server/package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Install concurrently globally for running both processes
+RUN npm install -g concurrently
+
+# Copy server code
+COPY server/ ./
+
+# Ensure uploads directory exists
+RUN mkdir -p uploads
+
+# Expose server port
+EXPOSE 8080
+
+# Run both server and worker using concurrently
+CMD ["concurrently", \
+     "--names", "SERVER,WORKER", \
+     "--prefix-colors", "cyan,magenta", \
+     "--kill-others", \
+     "node index.js", \
+     "node worker.js"]
