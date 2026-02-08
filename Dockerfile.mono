@@ -18,7 +18,7 @@ COPY server/ ./
 RUN mkdir -p uploads
 
 # Expose server port
-EXPOSE 8080
+EXPOSE 3001
 
 # Run both server and worker using concurrently
 CMD ["concurrently", \

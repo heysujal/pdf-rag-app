@@ -13,26 +13,44 @@ services:
     volumes:
       - qdrant-data:/qdrant/storage
   server:
-    build: ./server
+    build:
+      context: .
+      dockerfile: Dockerfile.server
     ports:
       - 3001:3001
     env_file:
       - ./server/.env
     volumes:
+      # Mount server code for hot-reload during development
+      - ./server:/app
+      - /app/node_modules
       - uploads-data:/app/uploads
+    command: npm run dev
     depends_on:
       - redis
       - qdrant
+    environment:
+      - REDIS_HOST=redis
+      # QDRANT_URL will be read from .env file (supports both local and cloud URLs)
   worker:
-    build: ./server
-    command: node worker.js
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: npm run dev:worker
     env_file:
       - ./server/.env
     volumes:
+      # Mount server code for hot-reload during development
+      - ./server:/app
+      - /app/node_modules
       - uploads-data:/app/uploads
     depends_on:
       - redis
       - qdrant
+      - server
+    environment:
+      - REDIS_HOST=redis
+      # QDRANT_URL will be read from .env file (supports both local and cloud URLs)
 
 volumes:
   redis-data:

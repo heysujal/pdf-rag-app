@@ -5,11 +5,19 @@ import React, {
 } from 'react';
 import { Button } from "@/components/ui/button"
 import { Upload } from 'lucide-react';
+import { useUser } from '@clerk/nextjs';
 export const FileUpload: React.FC = () => {
     const [fileName, setFileName] = useState<string | null>(null);
+    const { user } = useUser();
+    const email = user?.primaryEmailAddress?.emailAddress;
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const openFilePicker = () => {
         fileInputRef.current?.click();
+    }
+
+    if(!email){
+        return `Log in`;
     }
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -17,6 +25,7 @@ export const FileUpload: React.FC = () => {
         setFileName(file.name);
         const formData = new FormData();
         formData.append('pdfFile', file);
+        formData.append('email', email);
 
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/upload/pdf`, {

@@ -2,8 +2,12 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input"
 import { useRef, useState } from "react";
+import {useUser} from '@clerk/nextjs'
 
 export const QueryInput: React.FC = () => {
+
+    const {user} = useUser();
+    const email = user?.primaryEmailAddress?.emailAddress;
     const inputRef = useRef<HTMLInputElement>(null); // TODO: add ref for input
     const [messages, setMessages] = useState<{ role: string; content: string }[]>([
         {
@@ -19,7 +23,7 @@ export const QueryInput: React.FC = () => {
         inputRef.current.value = '';
 
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/ask?query=` + query);
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/ask?email=${email}&query=` + query);
             const data = await response.json();
             console.log("Response from server:", data);
             messages.push({ role: 'assistant', content: data.message });
