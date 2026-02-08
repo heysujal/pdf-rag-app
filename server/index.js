@@ -97,7 +97,7 @@ const upload = multer({ storage });
 // LLM SETUP
 // ========================================
 const llm = new ChatGoogleGenerativeAI({
-    model: 'gemini-2.5-flash',  // ✅ FIXED: Correct Gemini chat model
+    model: 'gemini-2.5-flash-lite',  // ✅ FIXED: Correct Gemini chat model
     temperature: 0,
     maxRetries: 2,
     apiKey: process.env.GEMINI_API_KEY,

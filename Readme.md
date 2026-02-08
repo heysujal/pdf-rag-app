@@ -66,6 +66,9 @@ but they couldn't share file system -> so other way was to add bucket.
 Skipped s3 approach and tried deploying using a single service using one Dockerfile.mono and for persistance attached volume 
 in railway to my pdf rag service.
 
+In Qdrant DB, to filter queries, we have to create index.
+
+
 ## Future Scope
 
 - ✅ Storage of PDF per user and only fetch docs from their collections (Implemented)
